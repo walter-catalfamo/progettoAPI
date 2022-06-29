@@ -2,24 +2,25 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+
 #define DIM 30
 
 struct node {
-    char string[DIM];
+    char *string;
     bool active;
     struct node *next;
 };
 
 int dimension;
 
-void my_strcpy(char a[DIM], char b[DIM]) {
+void my_strcpy(char *a, const char *b) {
     for (int i = 0; i < dimension; ++i) {
         a[i] = b[i];
     }
     a[dimension] = '*';
 }
 
-int my_strcmp(char a[DIM], char b[DIM]) {
+int my_strcmp(const char *a, const char *b) {
     for (int i = 0; i < dimension; ++i) {
         if (a[i] > b[i])
             return 1;
@@ -29,7 +30,7 @@ int my_strcmp(char a[DIM], char b[DIM]) {
     return 0;
 }
 
-void print_string(char a[DIM]) {
+void print_string(char *a) {
     for (int i = 0; i < dimension; ++i) {
         printf("%c", a[i]);
     }
@@ -46,29 +47,30 @@ void swap(struct node *a, struct node *b) {
     b->active = tempActive;
 }
 
-void sort_list(struct node *l) {
+struct node *sort_list(struct node *l) {
     int swapped;
     struct node *node1;
     struct node *node2 = NULL;
-    if (l == NULL)
-        return;
-    do {
-        swapped = 0;
-        node1 = l;
-        while (node1->next != node2) {
-            if (my_strcmp(node1->string, node1->next->string) > 0) {
-                swap(node1, node1->next);
-                swapped = 1;
+    if (l != NULL) {
+        do {
+            swapped = 0;
+            node1 = l;
+            while (node1->next != node2) {
+                if (my_strcmp(node1->string, node1->next->string) > 0) {
+                    swap(node1, node1->next);
+                    swapped = 1;
+                }
+                node1 = node1->next;
             }
-            node1 = node1->next;
-        }
-        node2 = node1;
-    } while (swapped);
+            node2 = node1;
+        } while (swapped);
+    }
+    return l;
 }
 
 
 int search_char(char x, const char ref[DIM]) {
-    for (int i = 0; i < DIM; ++i) {
+    for (int i = 0; i < dimension; ++i) {
         if (ref[i] == x)
             return 1;
     }
@@ -100,9 +102,12 @@ void print_list(struct node *l) {
     printf("\nEND PRINT LIST\n");
 }
 
-struct node *list_insert(struct node *l, char s[DIM]) {
+struct node *list_insert(struct node *l, const char *s) {
     struct node *new = (struct node *) malloc(sizeof(struct node));
-    my_strcpy(new->string, s);
+    new->string = (char *) malloc(dimension * sizeof(char));
+    for (int i = 0; i < dimension; ++i) {
+        new->string[i] = s[i];
+    }
     new->active = true;
     new->next = l;
     return new;
@@ -121,7 +126,7 @@ int list_search(struct node *l, char s[DIM]) {
 
 int complex_search_char(int pos, const char p[DIM], const char r[DIM]) {
     int N = 0, C = 0, K = 0;
-    for (int i = 0; i < DIM; ++i) {
+    for (int i = 0; i < dimension; ++i) {
         if (r[i] == p[pos])
             N++;
         if (p[pos] == p[i])
@@ -186,22 +191,45 @@ void all_words_must_have_this_char_but_not_here(struct node *l, char c, int pos)
 }
 
 
-struct node *print_result(struct node *l, char new_word[DIM], char ref[DIM]) {
+int count_char(char c, const char ref[DIM]) {
+    int n = 0;
     for (int i = 0; i < DIM; ++i) {
+        if (ref[i] == c)
+            n++;
+    }
+    return n;
+}
+
+struct node *compare_char(struct node *l, char ref[DIM], char c) {
+    int n = count_char(c, ref);
+    struct node *cur = l;
+    while (cur != NULL) {
+        if (cur->active == true) {
+            if (count_char(c, cur->string) != n)
+                cur->active = false;
+        }
+        cur = cur->next;
+    }
+    return l;
+}
+
+struct node *print_result(struct node *l, char *new_word, char *ref) {
+    for (int i = 0; i < dimension; ++i) {
         if (new_word[i] == '\0' || new_word[i] == '\n') {
             break;
         } else if (new_word[i] == ref[i]) {
             printf("+");
-            //all_words_must_have_this_char_here(l, new_word[i], i);
+            all_words_must_have_this_char_here(l, new_word[i], i);
         } else if (search_char(new_word[i], ref) == 0) {
             printf("/");
-            //delete_words_with_this_char(l, new_word[i]);
+            delete_words_with_this_char(l, new_word[i]);
         } else if (complex_search_char(i, new_word, ref) == 1) {
-            //all_words_must_have_this_char_but_not_here(l, new_word[i], i);
+            all_words_must_have_this_char_but_not_here(l, new_word[i], i);
             printf("/");
         } else {
             printf("|");
         }
+        //l = compare_char(l, ref, new_word[i]);
     }
     print_active_number(l);
     return l;
@@ -218,10 +246,19 @@ struct node *insert_new_words(struct node *l) {
         l = list_insert(l, str_in);
         read_string(str_in);
     }
-    sort_list(l);
+    l = sort_list(l);
     return l;
 }
 
+void free_list(struct node *l) {
+    struct node *temp = l;
+    while (l != NULL) {
+        temp = l;
+        l = l->next;
+        free(temp->string);
+        free(temp);
+    }
+}
 
 int p_atoi(const char *s) {
     int result = 0;
@@ -255,13 +292,15 @@ struct node *nuova_partita(struct node *l) {
         } else if (str_in[0] == '+' && str_in[1] == 'i') {
             l = insert_new_words(l);
         } else if (str_in[0] == '+' && str_in[1] == 's') {
+            l = sort_list(l);
             print_active(l);
         } else {
-            max_words--;
             if (my_strcmp(str_in, ref) == 0) {
+                max_words--;
                 printf("ok\n");
                 return l;
             } else if (list_search(l, str_in) == 1) {
+                max_words--;
                 l = print_result(l, str_in, ref);
                 printf("\n");
             } else {
@@ -295,5 +334,6 @@ int main() {
                 print_active(l);
         }
     }
+    free_list(l);
     return 0;
 }
