@@ -16,6 +16,7 @@ void my_strcpy(char a[DIM], char b[DIM]) {
     for (int i = 0; i < dimension; ++i) {
         a[i] = b[i];
     }
+    a[dimension] = '*';
 }
 
 int my_strcmp(char a[DIM], char b[DIM]) {
@@ -86,22 +87,12 @@ void delete_words_with_this_char(struct node *l, char c) { //the char does not b
 }
 
 
-int count_char(char c, const char ref[DIM]) {
-    int n = 0;
-    for (int i = 0; i < DIM; ++i) {
-        if (ref[i] == c)
-            n++;
-    }
-    return n;
-}
-
-
 void print_list(struct node *l) {
     struct node *cur = l;
     printf("\nPRINT LIST\n");
     while (cur != NULL) {
         if (cur->active == true) {
-            printf(" active = %d", cur->active);
+            printf(" active = %d ", cur->active);
             print_string(cur->string);
         }
         cur = cur->next;
@@ -111,9 +102,6 @@ void print_list(struct node *l) {
 
 struct node *list_insert(struct node *l, char s[DIM]) {
     struct node *new = (struct node *) malloc(sizeof(struct node));
-    for (int i = 0; i < DIM; ++i) {
-        new->string[i] = '*';
-    }
     my_strcpy(new->string, s);
     new->active = true;
     new->next = l;
@@ -183,7 +171,7 @@ void all_words_must_have_this_char_here(struct node *l, char c, int pos) {
 }
 
 char *read_string(char *s) {
-    return fgets(s, DIM - 1, stdin);
+    return fgets(s, DIM, stdin);
 }
 
 void all_words_must_have_this_char_but_not_here(struct node *l, char c, int pos) {
@@ -197,38 +185,26 @@ void all_words_must_have_this_char_but_not_here(struct node *l, char c, int pos)
     }
 }
 
-void compare_char(struct node *l, char ref[DIM], char c) {
-    int n = count_char(c, ref);
-    struct node *cur = l;
-    while (cur != NULL) {
-        if (cur->active == true) {
-            if (count_char(c, cur->string) != n)
-                cur->active = false;
-        }
-        cur = cur->next;
-    }
-}
 
-
-void print_result(struct node *l, char new_word[DIM], char ref[DIM]) {
+struct node *print_result(struct node *l, char new_word[DIM], char ref[DIM]) {
     for (int i = 0; i < DIM; ++i) {
         if (new_word[i] == '\0' || new_word[i] == '\n') {
             break;
         } else if (new_word[i] == ref[i]) {
             printf("+");
-            //all_words_must_have_this_char_here(new_word[i], i);
+            //all_words_must_have_this_char_here(l, new_word[i], i);
         } else if (search_char(new_word[i], ref) == 0) {
             printf("/");
-            //delete_words_with_this_char(new_word[i]);
+            //delete_words_with_this_char(l, new_word[i]);
         } else if (complex_search_char(i, new_word, ref) == 1) {
-            //all_words_must_have_this_char_but_not_here(new_word[i], i);
+            //all_words_must_have_this_char_but_not_here(l, new_word[i], i);
             printf("/");
         } else {
             printf("|");
         }
-        compare_char(l, ref, new_word[i]);
     }
     print_active_number(l);
+    return l;
 }
 
 void word_not_found() {
@@ -242,7 +218,7 @@ struct node *insert_new_words(struct node *l) {
         l = list_insert(l, str_in);
         read_string(str_in);
     }
-    //sort_list(l);
+    sort_list(l);
     return l;
 }
 
@@ -286,7 +262,7 @@ struct node *nuova_partita(struct node *l) {
                 printf("ok\n");
                 return l;
             } else if (list_search(l, str_in) == 1) {
-                print_result(l, str_in, ref);
+                l = print_result(l, str_in, ref);
                 printf("\n");
             } else {
                 word_not_found();
@@ -308,7 +284,6 @@ int main() {
             break;
         l = list_insert(l, str_in);
     }
-
     l = nuova_partita(l);
     while (read_string(str_in) != NULL) {
         if (str_in[0] == '+') {
