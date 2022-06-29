@@ -234,7 +234,7 @@ struct node *list_reset(struct node *l) {
 
 
 struct node *nuova_partita(struct node *l) {
-    list_reset(l);
+    l = list_reset(l);
     char ref[DIM];
     fgets(ref, DIM, stdin);
     char str_in[DIM];
@@ -280,9 +280,9 @@ int main() {
     while (fgets(str_in, DIM, stdin) != NULL) {
         if (str_in[0] == '+') {
             if (str_in[1] == 'n')
-                l=nuova_partita(l);
+                l = nuova_partita(l);
             else if (str_in[1] == 'i')
-                l=insert_new_words(l);
+                l = insert_new_words(l);
             else if (str_in[1] == 's')
                 print_active(l);
         }
