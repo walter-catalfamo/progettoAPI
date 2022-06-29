@@ -1,10 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-
-#include <string.h>
 #include <stdbool.h>
 
-#define DIM 40
+#define DIM 30
 
 struct node {
     char string[DIM];
@@ -12,15 +10,38 @@ struct node {
     struct node *next;
 };
 
+int dimension;
+
+void my_strcpy(char a[DIM], char b[DIM]) {
+    for (int i = 0; i < dimension; ++i) {
+        a[i] = b[i];
+    }
+}
+
+int my_strcmp(char a[DIM], char b[DIM]) {
+    for (int i = 0; i < dimension; ++i) {
+        if (a[i] > b[i])
+            return 1;
+        if (a[i] < b[i])
+            return -1;
+    }
+    return 0;
+}
+
+void print_string(char a[DIM]) {
+    for (int i = 0; i < dimension; ++i) {
+        printf("%c", a[i]);
+    }
+}
 
 void swap(struct node *a, struct node *b) {
     char tempString[DIM];
     bool tempActive;
-    strcpy(tempString, a->string);
+    my_strcpy(tempString, a->string);
     tempActive = a->active;
-    strcpy(a->string, b->string);
+    my_strcpy(a->string, b->string);
     a->active = b->active;
-    strcpy(b->string, tempString);
+    my_strcpy(b->string, tempString);
     b->active = tempActive;
 }
 
@@ -34,7 +55,7 @@ void sort_list(struct node *l) {
         swapped = 0;
         node1 = l;
         while (node1->next != node2) {
-            if (strcmp(node1->string, node1->next->string) > 0) {
+            if (my_strcmp(node1->string, node1->next->string) > 0) {
                 swap(node1, node1->next);
                 swapped = 1;
             }
@@ -79,15 +100,21 @@ void print_list(struct node *l) {
     struct node *cur = l;
     printf("\nPRINT LIST\n");
     while (cur != NULL) {
-        printf("active = %d string: %s", cur->active, cur->string);
+        if (cur->active == true) {
+            printf(" active = %d", cur->active);
+            print_string(cur->string);
+        }
         cur = cur->next;
     }
     printf("\nEND PRINT LIST\n");
 }
 
 struct node *list_insert(struct node *l, char s[DIM]) {
-    struct node *new = malloc(sizeof(struct node));
-    strcpy(new->string, s);
+    struct node *new = (struct node *) malloc(sizeof(struct node));
+    for (int i = 0; i < DIM; ++i) {
+        new->string[i] = '*';
+    }
+    my_strcpy(new->string, s);
     new->active = true;
     new->next = l;
     return new;
@@ -96,7 +123,7 @@ struct node *list_insert(struct node *l, char s[DIM]) {
 int list_search(struct node *l, char s[DIM]) {
     struct node *cur = l;
     while (cur != NULL) {
-        if (strcmp(s, cur->string) == 0) {
+        if (my_strcmp(s, cur->string) == 0) {
             return 1;
         }
         cur = cur->next;
@@ -126,7 +153,8 @@ void print_active(struct node *l) {
     struct node *cur = l;
     while (cur != NULL) {
         if (cur->active == true) {
-            printf("%s", cur->string);
+            print_string(cur->string);
+            printf("\n");
         }
         cur = cur->next;
     }
@@ -152,6 +180,10 @@ void all_words_must_have_this_char_here(struct node *l, char c, int pos) {
                 cur->active = false;
         cur = cur->next;
     }
+}
+
+char *read_string(char *s) {
+    return fgets(s, DIM - 1, stdin);
 }
 
 void all_words_must_have_this_char_but_not_here(struct node *l, char c, int pos) {
@@ -205,12 +237,12 @@ void word_not_found() {
 
 struct node *insert_new_words(struct node *l) {
     char str_in[DIM];
-    fgets(str_in, DIM, stdin);
+    read_string(str_in);
     while (str_in[0] != '+' || str_in[1] != 'i') {
         l = list_insert(l, str_in);
-        fgets(str_in, DIM, stdin);
+        read_string(str_in);
     }
-    sort_list(l);
+    //sort_list(l);
     return l;
 }
 
@@ -236,11 +268,11 @@ struct node *list_reset(struct node *l) {
 struct node *nuova_partita(struct node *l) {
     l = list_reset(l);
     char ref[DIM];
-    fgets(ref, DIM, stdin);
+    read_string(ref);
     char str_in[DIM];
-    fgets(str_in, DIM, stdin);
+    read_string(str_in);
     int max_words = p_atoi(str_in);
-    while (fgets(str_in, DIM, stdin) != NULL) {
+    while (read_string(str_in) != NULL) {
         if (max_words == 0) {
             printf("ko\n");
             return l;
@@ -250,7 +282,7 @@ struct node *nuova_partita(struct node *l) {
             print_active(l);
         } else {
             max_words--;
-            if (strcmp(str_in, ref) == 0) {
+            if (my_strcmp(str_in, ref) == 0) {
                 printf("ok\n");
                 return l;
             } else if (list_search(l, str_in) == 1) {
@@ -269,15 +301,16 @@ struct node *nuova_partita(struct node *l) {
 int main() {
     struct node *l = NULL;
     char str_in[DIM];
-    fgets(str_in, DIM, stdin);
-    int dimension = p_atoi(str_in);
-    while (fgets(str_in, DIM, stdin) != NULL) {
+    read_string(str_in);
+    dimension = p_atoi(str_in);
+    while (read_string(str_in) != NULL) {
         if (str_in[0] == '+')
             break;
         l = list_insert(l, str_in);
     }
+
     l = nuova_partita(l);
-    while (fgets(str_in, DIM, stdin) != NULL) {
+    while (read_string(str_in) != NULL) {
         if (str_in[0] == '+') {
             if (str_in[1] == 'n')
                 l = nuova_partita(l);
