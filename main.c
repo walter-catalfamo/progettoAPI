@@ -45,6 +45,8 @@ void sort_list() {
     } while (swapped);
 }
 
+
+
 int search_char(char x, const char ref[DIM]) {
     for (int i = 0; i < DIM; ++i) {
         if (ref[i] == x)
@@ -151,6 +153,7 @@ void all_words_must_have_this_char_here(char c, int pos) {
     while (cur != NULL) {
         if (cur->active == true)
             if (cur->string[pos] != c)
+
                 cur->active = false;
         cur = cur->next;
     }
