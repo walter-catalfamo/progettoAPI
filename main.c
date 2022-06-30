@@ -77,30 +77,6 @@ int search_char(char x, const char ref[DIM]) {
     return 0;
 }
 
-void delete_words_with_this_char(struct node *l, char c) { //the char does not belong to the string
-    struct node *cur = l;
-    while (cur != NULL) {
-        if (cur->active == true)
-            if (search_char(c, cur->string) == 1) {
-                cur->active = false;
-            }
-        cur = cur->next;
-    }
-}
-
-
-void print_list(struct node *l) {
-    struct node *cur = l;
-    printf("\nPRINT LIST\n");
-    while (cur != NULL) {
-        if (cur->active == true) {
-            printf(" active = %d ", cur->active);
-            print_string(cur->string);
-        }
-        cur = cur->next;
-    }
-    printf("\nEND PRINT LIST\n");
-}
 
 struct node *list_insert(struct node *l, const char *s) {
     struct node *new = (struct node *) malloc(sizeof(struct node));
@@ -193,7 +169,7 @@ void all_words_must_have_this_char_but_not_here(struct node *l, char c, int pos)
 
 int count_char(char c, const char ref[DIM]) {
     int n = 0;
-    for (int i = 0; i < DIM; ++i) {
+    for (int i = 0; i < dimension; ++i) {
         if (ref[i] == c)
             n++;
     }
@@ -222,14 +198,13 @@ struct node *print_result(struct node *l, char *new_word, char *ref) {
             all_words_must_have_this_char_here(l, new_word[i], i);
         } else if (search_char(new_word[i], ref) == 0) {
             printf("/");
-            delete_words_with_this_char(l, new_word[i]);
         } else if (complex_search_char(i, new_word, ref) == 1) {
             all_words_must_have_this_char_but_not_here(l, new_word[i], i);
             printf("/");
         } else {
             printf("|");
         }
-        //l = compare_char(l, ref, new_word[i]);
+        l = compare_char(l, ref, new_word[i]);
     }
     print_active_number(l);
     return l;
@@ -242,7 +217,7 @@ void word_not_found() {
 struct node *insert_new_words(struct node *l) {
     char str_in[DIM];
     read_string(str_in);
-    while (str_in[0] != '+' || str_in[1] != 'i') {
+    while (str_in[0] != '+' && str_in[1] != 'i') {
         l = list_insert(l, str_in);
         read_string(str_in);
     }
@@ -251,7 +226,7 @@ struct node *insert_new_words(struct node *l) {
 }
 
 void free_list(struct node *l) {
-    struct node *temp = l;
+    struct node *temp;
     while (l != NULL) {
         temp = l;
         l = l->next;
@@ -296,7 +271,6 @@ struct node *nuova_partita(struct node *l) {
             print_active(l);
         } else {
             if (my_strcmp(str_in, ref) == 0) {
-                max_words--;
                 printf("ok\n");
                 return l;
             } else if (list_search(l, str_in) == 1) {
