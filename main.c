@@ -12,17 +12,7 @@ struct node {
     struct node *next;
 };
 
-enum nodeColor {
-    RED,
-    BLACK
-};
 
-struct rbNode {
-    int data, color;
-    struct rbNode *link[2];
-};
-
-struct rbNode *root = NULL;
 
 int dimension;
 
