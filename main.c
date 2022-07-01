@@ -4,6 +4,7 @@
 
 
 #define DIM 30
+#define DIM_CHAR_COUNTER 300
 
 struct node {
     char *string;
@@ -11,7 +12,22 @@ struct node {
     struct node *next;
 };
 
+enum nodeColor {
+    RED,
+    BLACK
+};
+
+struct rbNode {
+    int data, color;
+    struct rbNode *link[2];
+};
+
+struct rbNode *root = NULL;
+
 int dimension;
+
+char *filter_word;
+int char_counter[DIM_CHAR_COUNTER];
 
 void my_strcpy(char *a, const char *b) {
     for (int i = 0; i < dimension; ++i) {
@@ -78,13 +94,13 @@ int search_char(char x, const char ref[DIM]) {
 }
 
 
-struct node *list_insert(struct node *l, const char *s) {
+struct node *list_insert(struct node *l, const char *s, bool active) {
     struct node *new = (struct node *) malloc(sizeof(struct node));
     new->string = (char *) malloc(dimension * sizeof(char));
     for (int i = 0; i < dimension; ++i) {
         new->string[i] = s[i];
     }
-    new->active = true;
+    new->active = active;
     new->next = l;
     return new;
 }
@@ -140,12 +156,12 @@ void print_active_number(struct node *l) {
     printf("\n%d", n);
 }
 
+
 void all_words_must_have_this_char_here(struct node *l, char c, int pos) {
     struct node *cur = l;
     while (cur != NULL) {
         if (cur->active == true)
             if (cur->string[pos] != c)
-
                 cur->active = false;
         cur = cur->next;
     }
@@ -195,6 +211,7 @@ struct node *print_result(struct node *l, char *new_word, char *ref) {
             break;
         } else if (new_word[i] == ref[i]) {
             printf("+");
+            filter_word[i] = new_word[i];
             all_words_must_have_this_char_here(l, new_word[i], i);
         } else if (search_char(new_word[i], ref) == 0) {
             printf("/");
@@ -202,8 +219,11 @@ struct node *print_result(struct node *l, char *new_word, char *ref) {
             all_words_must_have_this_char_but_not_here(l, new_word[i], i);
             printf("/");
         } else {
+            all_words_must_have_this_char_but_not_here(l, new_word[i], i);
             printf("|");
         }
+        int pos = new_word[i];
+        char_counter[pos] = count_char(new_word[i], ref);
         l = compare_char(l, ref, new_word[i]);
     }
     print_active_number(l);
@@ -214,11 +234,25 @@ void word_not_found() {
     printf("not_exists");
 }
 
+bool to_filter(char *s) {
+    for (int i = 0; i < dimension; ++i) {
+        if (filter_word[i] != '*')
+            if (s[i] != filter_word[i])
+                return true;
+    }
+    for (int i = 0; i < DIM_CHAR_COUNTER; ++i) {
+        if (char_counter[i] != -1)
+            if (char_counter[i] != count_char(i, s))
+                return true;
+    }
+    return false;
+}
+
 struct node *insert_new_words(struct node *l) {
     char str_in[DIM];
     read_string(str_in);
     while (str_in[0] != '+' && str_in[1] != 'i') {
-        l = list_insert(l, str_in);
+        l = list_insert(l, str_in, !to_filter(str_in));
         read_string(str_in);
     }
     l = sort_list(l);
@@ -252,8 +286,25 @@ struct node *list_reset(struct node *l) {
     return l;
 }
 
+void reset_filter_word() {
+    for (int i = 0; i < dimension; ++i) {
+        filter_word[i] = '*';
+    }
+}
+
+void filter_word_creator() {
+    filter_word = malloc(dimension * sizeof(char));
+}
+
+void reset_char_counter() {
+    for (int i = 0; i < DIM_CHAR_COUNTER; ++i) {
+        char_counter[i] = -1;
+    }
+}
 
 struct node *nuova_partita(struct node *l) {
+    reset_char_counter();
+    reset_filter_word();
     l = list_reset(l);
     char ref[DIM];
     read_string(ref);
@@ -261,10 +312,11 @@ struct node *nuova_partita(struct node *l) {
     read_string(str_in);
     int max_words = p_atoi(str_in);
     while (read_string(str_in) != NULL) {
-        if (max_words == 0) {
-            printf("ko\n");
+        if (str_in[0] == '+' && str_in[1] == 'n') {
+            l = nuova_partita(l);
             return l;
-        } else if (str_in[0] == '+' && str_in[1] == 'i') {
+        }
+        if (str_in[0] == '+' && str_in[1] == 'i') {
             l = insert_new_words(l);
         } else if (str_in[0] == '+' && str_in[1] == 's') {
             l = sort_list(l);
@@ -281,6 +333,10 @@ struct node *nuova_partita(struct node *l) {
                 word_not_found();
                 printf("\n");
             }
+            if (max_words == 0) {
+                printf("ko\n");
+                return l;
+            }
         }
     }
     return l;
@@ -288,6 +344,7 @@ struct node *nuova_partita(struct node *l) {
 
 
 int main() {
+    filter_word_creator();
     struct node *l = NULL;
     char str_in[DIM];
     read_string(str_in);
@@ -295,7 +352,7 @@ int main() {
     while (read_string(str_in) != NULL) {
         if (str_in[0] == '+')
             break;
-        l = list_insert(l, str_in);
+        l = list_insert(l, str_in, true);
     }
     l = nuova_partita(l);
     while (read_string(str_in) != NULL) {
@@ -308,6 +365,6 @@ int main() {
                 print_active(l);
         }
     }
-    free_list(l);
+    //free_list(l);
     return 0;
 }
