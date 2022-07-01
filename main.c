@@ -365,6 +365,6 @@ int main() {
                 print_active(l);
         }
     }
-    //free_list(l);
+    free_list(l);
     return 0;
 }
