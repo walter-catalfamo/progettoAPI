@@ -6,16 +6,20 @@
 #define DIM 30
 #define DIM_CHAR_COUNTER 300
 
-struct node {
+enum nodeColor {
+    RED,
+    BLACK
+};
+
+struct rbNode {
+    int color;
     char *string;
     bool active;
-    struct node *next;
+    struct rbNode *link[2];
 };
 
 
-
 int dimension;
-
 char *filter_word;
 int char_counter[DIM_CHAR_COUNTER];
 
@@ -25,6 +29,7 @@ void my_strcpy(char *a, const char *b) {
     }
     a[dimension] = '*';
 }
+
 
 int my_strcmp(const char *a, const char *b) {
     for (int i = 0; i < dimension; ++i) {
@@ -36,77 +41,137 @@ int my_strcmp(const char *a, const char *b) {
     return 0;
 }
 
+
+struct rbNode *createNode(char *string, bool active) {
+    struct rbNode *newnode;
+    newnode = (struct rbNode *) malloc(sizeof(struct rbNode));
+    newnode->string = (char *) malloc(dimension * sizeof(char));
+    my_strcpy(newnode->string, string);
+    newnode->color = RED;
+    newnode->active = active;
+    newnode->link[0] = newnode->link[1] = NULL;
+    return newnode;
+}
+
+
+struct rbNode *insertion(struct rbNode *root, char *string, bool active) {
+    struct rbNode *stack[98], *ptr, *newnode, *xPtr, *yPtr;
+    int dir[98], ht = 0, index;
+    ptr = root;
+    if (!root) {
+        root = createNode(string, active);
+        return root;
+    }
+    stack[ht] = root;
+    dir[ht++] = 0;
+    while (ptr != NULL) {
+        if (my_strcmp(ptr->string, string) == 0) {
+            printf("Duplicates Not Allowed!!\n");
+            return root;
+        }
+        if (my_strcmp(string, ptr->string) > 0)
+            index = 1;
+        else
+            index = 0;
+        stack[ht] = ptr;
+        ptr = ptr->link[index];
+        dir[ht++] = index;
+    }
+    newnode = createNode(string, active);
+    stack[ht - 1]->link[index] = newnode;
+    while ((ht >= 3) && (stack[ht - 1]->color == RED)) {
+        if (dir[ht - 2] == 0) {
+            yPtr = stack[ht - 2]->link[1];
+            if (yPtr != NULL && yPtr->color == RED) {
+                stack[ht - 2]->color = RED;
+                stack[ht - 1]->color = yPtr->color = BLACK;
+                ht = ht - 2;
+            } else {
+                if (dir[ht - 1] == 0) {
+                    yPtr = stack[ht - 1];
+                } else {
+                    xPtr = stack[ht - 1];
+                    yPtr = xPtr->link[1];
+                    xPtr->link[1] = yPtr->link[0];
+                    yPtr->link[0] = xPtr;
+                    stack[ht - 2]->link[0] = yPtr;
+                }
+                xPtr = stack[ht - 2];
+                xPtr->color = RED;
+                yPtr->color = BLACK;
+                xPtr->link[0] = yPtr->link[1];
+                yPtr->link[1] = xPtr;
+                if (xPtr == root) {
+                    root = yPtr;
+                } else {
+                    stack[ht - 3]->link[dir[ht - 3]] = yPtr;
+                }
+                break;
+            }
+        } else {
+            yPtr = stack[ht - 2]->link[0];
+            if ((yPtr != NULL) && (yPtr->color == RED)) {
+                stack[ht - 2]->color = RED;
+                stack[ht - 1]->color = yPtr->color = BLACK;
+                ht = ht - 2;
+            } else {
+                if (dir[ht - 1] == 1) {
+                    yPtr = stack[ht - 1];
+                } else {
+                    xPtr = stack[ht - 1];
+                    yPtr = xPtr->link[0];
+                    xPtr->link[0] = yPtr->link[1];
+                    yPtr->link[1] = xPtr;
+                    stack[ht - 2]->link[1] = yPtr;
+                }
+                xPtr = stack[ht - 2];
+                yPtr->color = BLACK;
+                xPtr->color = RED;
+                xPtr->link[1] = yPtr->link[0];
+                yPtr->link[0] = xPtr;
+                if (xPtr == root) {
+                    root = yPtr;
+                } else {
+                    stack[ht - 3]->link[dir[ht - 3]] = yPtr;
+                }
+                break;
+            }
+        }
+    }
+    root->color = BLACK;
+    return root;
+}
+
+
 void print_string(char *a) {
     for (int i = 0; i < dimension; ++i) {
         printf("%c", a[i]);
     }
 }
 
-void swap(struct node *a, struct node *b) {
-    char tempString[DIM];
-    bool tempActive;
-    my_strcpy(tempString, a->string);
-    tempActive = a->active;
-    my_strcpy(a->string, b->string);
-    a->active = b->active;
-    my_strcpy(b->string, tempString);
-    b->active = tempActive;
-}
 
-struct node *sort_list(struct node *l) {
-    int swapped;
-    struct node *node1;
-    struct node *node2 = NULL;
-    if (l != NULL) {
-        do {
-            swapped = 0;
-            node1 = l;
-            while (node1->next != node2) {
-                if (my_strcmp(node1->string, node1->next->string) > 0) {
-                    swap(node1, node1->next);
-                    swapped = 1;
-                }
-                node1 = node1->next;
-            }
-            node2 = node1;
-        } while (swapped);
-    }
-    return l;
-}
-
-
-int search_char(char x, const char ref[DIM]) {
+bool search_char(char x, const char ref[DIM]) {
     for (int i = 0; i < dimension; ++i) {
         if (ref[i] == x)
-            return 1;
+            return true;
     }
-    return 0;
+    return false;
 }
 
 
-struct node *list_insert(struct node *l, const char *s, bool active) {
-    struct node *new = (struct node *) malloc(sizeof(struct node));
-    new->string = (char *) malloc(dimension * sizeof(char));
-    for (int i = 0; i < dimension; ++i) {
-        new->string[i] = s[i];
+bool search(struct rbNode *l, char s[DIM]) {
+    if (l) {
+        if (my_strcmp(s, l->string) == 0)
+            return true;
+        if (my_strcmp(s, l->string) > 0)
+            return search(l->link[1], s);
+        if (my_strcmp(s, l->string) < 0)
+            return search(l->link[0], s);
     }
-    new->active = active;
-    new->next = l;
-    return new;
+    return false;
 }
 
-int list_search(struct node *l, char s[DIM]) {
-    struct node *cur = l;
-    while (cur != NULL) {
-        if (my_strcmp(s, cur->string) == 0) {
-            return 1;
-        }
-        cur = cur->next;
-    }
-    return 0;
-}
-
-int complex_search_char(int pos, const char p[DIM], const char r[DIM]) {
+bool complex_search_char(int pos, const char p[DIM], const char r[DIM]) {
     int N = 0, C = 0, K = 0;
     for (int i = 0; i < dimension; ++i) {
         if (r[i] == p[pos])
@@ -120,56 +185,67 @@ int complex_search_char(int pos, const char p[DIM], const char r[DIM]) {
                     K++;
     }
     if (K >= N - C)
-        return 1;
+        return true;
+    return false;
+}
+
+void print_active(struct rbNode *l) {
+    if (l) {
+        print_active(l->link[0]);
+        if (l->active == true) {
+            print_string(l->string);
+            printf("\n");
+        }
+        print_active(l->link[1]);
+    }
+}
+
+void print_tree(struct rbNode *l) {
+    if (l) {
+        print_tree(l->link[0]);
+        printf("%s, %d\n", l->string, l->active);
+        print_tree(l->link[1]);
+    }
+}
+
+int count_active_number(struct rbNode *l) {
+    if (l) {
+        if (l->active == true)
+            return 1 + count_active_number(l->link[0]) +
+                   count_active_number(l->link[1]);
+        else
+            return count_active_number(l->link[0]) +
+                   count_active_number(l->link[1]);
+    }
     return 0;
 }
 
-void print_active(struct node *l) {
-    struct node *cur = l;
-    while (cur != NULL) {
-        if (cur->active == true) {
-            print_string(cur->string);
-            printf("\n");
-        }
-        cur = cur->next;
-    }
-}
 
-void print_active_number(struct node *l) {
-    int n = 0;
-    struct node *cur = l;
-    while (cur != NULL) {
-        if (cur->active == true)
-            n++;
-        cur = cur->next;
+struct rbNode *all_words_must_have_this_char_here(struct rbNode *l, char c, int pos) {
+    if (l) {
+        if (l->active == true)
+            if (l->string[pos] != c)
+                l->active = false;
+        l->link[0] = all_words_must_have_this_char_here(l->link[0], c, pos);
+        l->link[1] = all_words_must_have_this_char_here(l->link[1], c, pos);
     }
-    printf("\n%d", n);
-}
-
-
-void all_words_must_have_this_char_here(struct node *l, char c, int pos) {
-    struct node *cur = l;
-    while (cur != NULL) {
-        if (cur->active == true)
-            if (cur->string[pos] != c)
-                cur->active = false;
-        cur = cur->next;
-    }
+    return l;
 }
 
 char *read_string(char *s) {
     return fgets(s, DIM, stdin);
 }
 
-void all_words_must_have_this_char_but_not_here(struct node *l, char c, int pos) {
-    struct node *cur = l;
-    while (cur != NULL) {
-        if (cur->active == true) {
-            if (cur->string[pos] == c || search_char(c, cur->string) == 0)
-                cur->active = false;
+struct rbNode *all_words_must_have_this_char_but_not_here(struct rbNode *l, char c, int pos) {
+    if (l) {
+        if (l->active == true) {
+            if (l->string[pos] == c || search_char(c, l->string) == 0)
+                l->active = false;
         }
-        cur = cur->next;
+        l->link[0] = all_words_must_have_this_char_but_not_here(l->link[0], c, pos);
+        l->link[1] = all_words_must_have_this_char_but_not_here(l->link[1], c, pos);
     }
+    return l;
 }
 
 
@@ -182,41 +258,45 @@ int count_char(char c, const char ref[DIM]) {
     return n;
 }
 
-struct node *compare_char(struct node *l, char ref[DIM], char c) {
-    int n = count_char(c, ref);
-    struct node *cur = l;
-    while (cur != NULL) {
-        if (cur->active == true) {
-            if (count_char(c, cur->string) != n)
-                cur->active = false;
+struct rbNode *compare_char(struct rbNode *l) {
+    if (l) {
+        compare_char(l->link[0]);
+        for (int i = 0; i < DIM_CHAR_COUNTER; ++i) {
+            if (char_counter[i] != -1) {
+                if (count_char(i, l->string) < char_counter[i])
+                    l->active = false;
+            }
         }
-        cur = cur->next;
+        compare_char(l->link[1]);
     }
     return l;
 }
 
-struct node *print_result(struct node *l, char *new_word, char *ref) {
+struct rbNode *print_result(struct rbNode *l, char *new_word, char *ref) {
     for (int i = 0; i < dimension; ++i) {
         if (new_word[i] == '\0' || new_word[i] == '\n') {
             break;
         } else if (new_word[i] == ref[i]) {
             printf("+");
             filter_word[i] = new_word[i];
-            all_words_must_have_this_char_here(l, new_word[i], i);
-        } else if (search_char(new_word[i], ref) == 0) {
+            l = all_words_must_have_this_char_here(l, new_word[i], i);
+            if (char_counter[new_word[i]] == -1)
+                char_counter[new_word[i]] = 0;
+            char_counter[new_word[i]]++;
+        } else if (search_char(new_word[i], ref) == false) {
             printf("/");
-        } else if (complex_search_char(i, new_word, ref) == 1) {
-            all_words_must_have_this_char_but_not_here(l, new_word[i], i);
+            char_counter[new_word[i]] = 0;
+        } else if (complex_search_char(i, new_word, ref) == true) {
+            l = all_words_must_have_this_char_but_not_here(l, new_word[i], i);
             printf("/");
         } else {
-            all_words_must_have_this_char_but_not_here(l, new_word[i], i);
+            l = all_words_must_have_this_char_but_not_here(l, new_word[i], i);
             printf("|");
         }
-        int pos = new_word[i];
-        char_counter[pos] = count_char(new_word[i], ref);
-        l = compare_char(l, ref, new_word[i]);
+        //char_counter[new_word[i]] = count_char(new_word[i], ref);
+        l = compare_char(l);
     }
-    print_active_number(l);
+    printf("\n%d", count_active_number(l));
     return l;
 }
 
@@ -238,24 +318,22 @@ bool to_filter(char *s) {
     return false;
 }
 
-struct node *insert_new_words(struct node *l) {
+struct rbNode *insert_new_words(struct rbNode *l) {
     char str_in[DIM];
     read_string(str_in);
     while (str_in[0] != '+' && str_in[1] != 'i') {
-        l = list_insert(l, str_in, !to_filter(str_in));
+        l = insertion(l, str_in, !to_filter(str_in));
         read_string(str_in);
     }
-    l = sort_list(l);
     return l;
 }
 
-void free_list(struct node *l) {
-    struct node *temp;
-    while (l != NULL) {
-        temp = l;
-        l = l->next;
-        free(temp->string);
-        free(temp);
+void free_s(struct rbNode *l) {
+    if (l) {
+        free_s(l->link[0]);
+        free_s(l->link[1]);
+        free(l->string);
+        free(l);
     }
 }
 
@@ -267,11 +345,11 @@ int p_atoi(const char *s) {
     return result;
 }
 
-struct node *list_reset(struct node *l) {
-    struct node *cur = l;
-    while (cur != NULL) {
-        cur->active = true;
-        cur = cur->next;
+struct rbNode *reset(struct rbNode *l) {
+    if (l != NULL) {
+        reset(l->link[0]);
+        l->active = true;
+        reset(l->link[1]);
     }
     return l;
 }
@@ -292,10 +370,10 @@ void reset_char_counter() {
     }
 }
 
-struct node *nuova_partita(struct node *l) {
+struct rbNode *nuova_partita(struct rbNode *l) {
     reset_char_counter();
     reset_filter_word();
-    l = list_reset(l);
+    l = reset(l);
     char ref[DIM];
     read_string(ref);
     char str_in[DIM];
@@ -309,13 +387,12 @@ struct node *nuova_partita(struct node *l) {
         if (str_in[0] == '+' && str_in[1] == 'i') {
             l = insert_new_words(l);
         } else if (str_in[0] == '+' && str_in[1] == 's') {
-            l = sort_list(l);
             print_active(l);
         } else {
             if (my_strcmp(str_in, ref) == 0) {
                 printf("ok\n");
                 return l;
-            } else if (list_search(l, str_in) == 1) {
+            } else if (search(l, str_in) == true) {
                 max_words--;
                 l = print_result(l, str_in, ref);
                 printf("\n");
@@ -335,26 +412,26 @@ struct node *nuova_partita(struct node *l) {
 
 int main() {
     filter_word_creator();
-    struct node *l = NULL;
+    struct rbNode *l = NULL;
     char str_in[DIM];
     read_string(str_in);
     dimension = p_atoi(str_in);
     while (read_string(str_in) != NULL) {
         if (str_in[0] == '+')
             break;
-        l = list_insert(l, str_in, true);
+        l = insertion(l, str_in, true);
     }
     l = nuova_partita(l);
     while (read_string(str_in) != NULL) {
         if (str_in[0] == '+') {
-            if (str_in[1] == 'n')
+            if (str_in[1] == 'n') {
                 l = nuova_partita(l);
-            else if (str_in[1] == 'i')
+            } else if (str_in[1] == 'i')
                 l = insert_new_words(l);
             else if (str_in[1] == 's')
                 print_active(l);
         }
     }
-    free_list(l);
+    //free_s(l);
     return 0;
 }
