@@ -18,10 +18,33 @@ struct rbNode {
     struct rbNode *link[2];
 };
 
+struct char_node {
+    char c;
+    int pos;
+    struct char_node *next;
+};
 
 int dimension;
+struct char_node *char_list = NULL;
 char *filter_word;
-int char_counter[DIM_CHAR_COUNTER];
+
+void char_node_insert (char c, int pos){
+    struct char_node *new = malloc(sizeof(struct char_node));
+    new->c = c;
+    new->pos = pos;
+    new->next = char_list;
+    char_list = new;
+};
+
+bool search_char_list(char c){
+    struct char_node *cur = char_list;
+    while (cur != NULL){
+        if (cur->c == c && cur->pos == -1)
+            return true;
+        cur = cur->next;
+    }
+    return false;
+}
 
 void my_strcpy(char *a, const char *b) {
     for (int i = 0; i < dimension; ++i) {
@@ -39,6 +62,14 @@ int my_strcmp(const char *a, const char *b) {
             return -1;
     }
     return 0;
+}
+
+
+struct rbNode *filter(struct rbNode *node) {
+    if (node->active == true) {
+        node->active = false;
+    }
+    return node;
 }
 
 
@@ -191,6 +222,8 @@ bool complex_search_char(int pos, const char p[DIM], const char r[DIM]) {
 
 void print_active(struct rbNode *l) {
     if (l) {
+        if (my_strcmp(l->string, "AAbmN") == 0)
+            printf("");
         print_active(l->link[0]);
         if (l->active == true) {
             print_string(l->string);
@@ -221,31 +254,8 @@ int count_active_number(struct rbNode *l) {
 }
 
 
-struct rbNode *all_words_must_have_this_char_here(struct rbNode *l, char c, int pos) {
-    if (l) {
-        if (l->active == true)
-            if (l->string[pos] != c)
-                l->active = false;
-        l->link[0] = all_words_must_have_this_char_here(l->link[0], c, pos);
-        l->link[1] = all_words_must_have_this_char_here(l->link[1], c, pos);
-    }
-    return l;
-}
-
 char *read_string(char *s) {
     return fgets(s, DIM, stdin);
-}
-
-struct rbNode *all_words_must_have_this_char_but_not_here(struct rbNode *l, char c, int pos) {
-    if (l) {
-        if (l->active == true) {
-            if (l->string[pos] == c || search_char(c, l->string) == 0)
-                l->active = false;
-        }
-        l->link[0] = all_words_must_have_this_char_but_not_here(l->link[0], c, pos);
-        l->link[1] = all_words_must_have_this_char_but_not_here(l->link[1], c, pos);
-    }
-    return l;
 }
 
 
@@ -258,43 +268,48 @@ int count_char(char c, const char ref[DIM]) {
     return n;
 }
 
-struct rbNode *compare_char(struct rbNode *l) {
+struct rbNode *delete_words_with_this_char(struct rbNode *l, char wrong_char) {
     if (l) {
-        compare_char(l->link[0]);
-        for (int i = 0; i < DIM_CHAR_COUNTER; ++i) {
-            if (char_counter[i] != -1) {
-                if (count_char(i, l->string) < char_counter[i])
-                    l->active = false;
-            }
-        }
-        compare_char(l->link[1]);
+        if (l->active)
+            if (count_char(wrong_char, l->string) > 0)
+                l = filter(l);
+        l->link[0] = delete_words_with_this_char(l->link[0], wrong_char);
+        l->link[1] = delete_words_with_this_char(l->link[1], wrong_char);
+    }
+    return l;
+}
+
+struct rbNode *delete_words_without_this_char_here(struct rbNode *l, char right_char, int pos) {
+    if (l) {
+        if (l->active)
+            if (l->string[pos] != right_char)
+                l = filter(l);
+        l->link[0] = delete_words_without_this_char_here(l->link[0], right_char, pos);
+        l->link[1] = delete_words_without_this_char_here(l->link[1], right_char, pos);
     }
     return l;
 }
 
 struct rbNode *print_result(struct rbNode *l, char *new_word, char *ref) {
+    printf("inserted word = ");
+    print_string(new_word);
+    printf(": \t");
     for (int i = 0; i < dimension; ++i) {
         if (new_word[i] == '\0' || new_word[i] == '\n') {
             break;
         } else if (new_word[i] == ref[i]) {
             printf("+");
-            filter_word[i] = new_word[i];
-            l = all_words_must_have_this_char_here(l, new_word[i], i);
-            if (char_counter[new_word[i]] == -1)
-                char_counter[new_word[i]] = 0;
-            char_counter[new_word[i]]++;
+            l = delete_words_without_this_char_here(l, new_word[i], i);
         } else if (search_char(new_word[i], ref) == false) {
             printf("/");
-            char_counter[new_word[i]] = 0;
+            l = delete_words_with_this_char(l, new_word[i]);
+            char_node_insert(new_word[i], -1);
         } else if (complex_search_char(i, new_word, ref) == true) {
-            l = all_words_must_have_this_char_but_not_here(l, new_word[i], i);
             printf("/");
         } else {
-            l = all_words_must_have_this_char_but_not_here(l, new_word[i], i);
             printf("|");
+            char_node_insert(new_word[i], -2);
         }
-        //char_counter[new_word[i]] = count_char(new_word[i], ref);
-        l = compare_char(l);
     }
     printf("\n%d", count_active_number(l));
     return l;
@@ -304,19 +319,15 @@ void word_not_found() {
     printf("not_exists");
 }
 
-bool to_filter(char *s) {
+
+bool to_filter(char *s){
     for (int i = 0; i < dimension; ++i) {
-        if (filter_word[i] != '*')
-            if (s[i] != filter_word[i])
-                return true;
-    }
-    for (int i = 0; i < DIM_CHAR_COUNTER; ++i) {
-        if (char_counter[i] != -1)
-            if (char_counter[i] != count_char(i, s))
-                return true;
+        if (search_char_list(s[i]) == true)
+            return true;
     }
     return false;
 }
+
 
 struct rbNode *insert_new_words(struct rbNode *l) {
     char str_in[DIM];
@@ -354,28 +365,14 @@ struct rbNode *reset(struct rbNode *l) {
     return l;
 }
 
-void reset_filter_word() {
-    for (int i = 0; i < dimension; ++i) {
-        filter_word[i] = '*';
-    }
-}
-
-void filter_word_creator() {
-    filter_word = malloc(dimension * sizeof(char));
-}
-
-void reset_char_counter() {
-    for (int i = 0; i < DIM_CHAR_COUNTER; ++i) {
-        char_counter[i] = -1;
-    }
-}
 
 struct rbNode *nuova_partita(struct rbNode *l) {
-    reset_char_counter();
-    reset_filter_word();
+
     l = reset(l);
+
     char ref[DIM];
     read_string(ref);
+    printf("\nnew match with ref = %s\n", ref);
     char str_in[DIM];
     read_string(str_in);
     int max_words = p_atoi(str_in);
@@ -411,7 +408,6 @@ struct rbNode *nuova_partita(struct rbNode *l) {
 
 
 int main() {
-    filter_word_creator();
     struct rbNode *l = NULL;
     char str_in[DIM];
     read_string(str_in);
@@ -432,6 +428,6 @@ int main() {
                 print_active(l);
         }
     }
-    //free_s(l);
+    free_s(l);
     return 0;
 }
